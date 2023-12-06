@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 
-/.csv
+.csv
 
 /.quarto/
+input/
