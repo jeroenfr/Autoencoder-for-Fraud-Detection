@@ -142,6 +142,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#credit-card-data" id="toc-credit-card-data" class="nav-link active" data-scroll-target="#credit-card-data">Credit card data</a></li>
+  <li><a href="#normalizing-the-data" id="toc-normalizing-the-data" class="nav-link" data-scroll-target="#normalizing-the-data">Normalizing the data</a></li>
   </ul>
 </nav>
     </div>
@@ -227,6 +228,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell-output-display">
 <p><img src="index_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid" width="672"></p>
 </div>
+</div>
+</section>
+<section id="normalizing-the-data" class="level1">
+<h1>Normalizing the data</h1>
+<p>We are going to use autoencoders to detect the fraudulent cases. This means we will use the non-fraudulent training data to learn an encoding function for the data. When we apply this on the validation set, we expect to see that the fraudulent transactions are not well reconstructed.</p>
+<p>Since an autoencoder is a type of neural network, it is very important to normalize your data first. You can do this by rescaling the data to either a [0,1] or [-1,1] range or by standardizing them so that they are normally distributed with standard deviation 1. In R we can use the caret package which has a preprocessing functionality. With this functionality, we create a transformator with our training data that we can apply on the “future” data points or test set.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>minMaxScale <span class="ot">&lt;-</span> df_train <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span>Class) <span class="sc">%&gt;%</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">preProcess</span>(<span class="at">method =</span> <span class="st">"range"</span>) <span class="co">#use c("center", "scale") for standardization</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>x_train <span class="ot">&lt;-</span> <span class="fu">predict</span>(minMaxScale, df_train) <span class="sc">%&gt;%</span> </span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>Class) <span class="sc">%&gt;%</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.matrix</span>() <span class="co">#You need this format for tensorflow to accept it as input</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>x_test <span class="ot">&lt;-</span> <span class="fu">predict</span>(minMaxScale, df_test) <span class="sc">%&gt;%</span> </span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>Class) <span class="sc">%&gt;%</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.matrix</span>()</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>y_train <span class="ot">&lt;-</span> df_train<span class="sc">$</span>Class</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>y_test <span class="ot">&lt;-</span> df_test<span class="sc">$</span>Class</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 
 
