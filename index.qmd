@@ -1,0 +1,63 @@
+---
+title: "Autoencoder for fraud detection"
+author: "Jeroen Frans"
+date: "15 november 2019"
+---
+
+## Credit card data
+
+For this demo, we use a kaggle data set that is readily available (https://www.kaggle.com/mlg-ulb/creditcardfraud). It contains European credit card transactions in the period of September 2013. Note that fraud is a rara phenomenon: of the total of 284,807 transactions only a mere 492 were fraudulent. This corresponds to an incidence rate of 0.172%. This means there is a strong class imbalance.
+
+The dataset contains 28 numerical features (V1 - V28) that are the result of a PCA transformation. This is done for confidentiality. On top of these features also the time is registered and the transaction amount. Time is expressed as seconds after the first observation.
+
+A visual inspection of the data already shows that some of the features have a different distribution for the fraudulent cases compared to the non-fraudulent ones.
+
+As preparatory steps, take the (chronologically) first 230,000 data points as a training set and the rest for validation. This resembles the real-life scenario where you will want to predict for future transactions whether they are fraudulent based on the earlier transactions done.
+
+```{r, output=F}
+library(readr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(ggridges)
+library(purrr)
+library(keras)
+library(caret)
+```
+
+```{r Load and Train-Test split}
+df <- read_csv("input/creditcard.csv", col_types = list(Time = col_number()))
+df_train <- df %>% filter(row_number(Time) <= 230000) %>% select(-Time)
+df_test <- df %>% filter(row_number(Time) > 230000) %>% select(-Time)
+print(head(df_train))
+```
+
+```{r}
+df %>%
+  gather(variable, value, -Class) %>%
+  ggplot(aes(y = as.factor(variable), 
+             fill = as.factor(Class), 
+             x = percent_rank(value))) +
+  geom_density_ridges()
+```
+# Normalizing the data
+
+We are going to use autoencoders to detect the fraudulent cases. This means we will use the non-fraudulent training data to learn an encoding function for the data. When we apply this on the validation set, we expect to see that the fraudulent transactions are not well reconstructed.
+
+Since an autoencoder is a type of neural network, it is very important to normalize your data first. You can do this by rescaling the data to either a [0,1] or [-1,1] range or by standardizing them so that they are normally distributed with standard deviation 1. In R we can use the caret package which has a preprocessing functionality. With this functionality, we create a transformator with our training data that we can apply on the "future" data points or test set.
+
+```{r normalization}
+minMaxScale <- df_train %>% select(-Class) %>%
+  preProcess(method = "range") #use c("center", "scale") for standardization
+
+x_train <- predict(minMaxScale, df_train) %>% 
+  select(-Class) %>%
+  as.matrix() #You need this format for tensorflow to accept it as input
+x_test <- predict(minMaxScale, df_test) %>% 
+  select(-Class) %>%
+  as.matrix()
+
+y_train <- df_train$Class
+y_test <- df_test$Class
+```
+
