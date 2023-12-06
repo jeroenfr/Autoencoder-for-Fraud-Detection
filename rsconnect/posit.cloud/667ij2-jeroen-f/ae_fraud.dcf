@@ -1,0 +1,12 @@
+name: ae_fraud
+title: AE fraud
+username: 667ij2-jeroen-f
+account: 667ij2-jeroen-f
+server: posit.cloud
+hostUrl: https://api.posit.cloud/v1
+appId: 7216059
+bundleId: 8016461
+url: https://posit.cloud/content/7216059
+version: 1
+asMultiple: FALSE
+asStatic: TRUE

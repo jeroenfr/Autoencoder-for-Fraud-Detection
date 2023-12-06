@@ -143,6 +143,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul>
   <li><a href="#credit-card-data" id="toc-credit-card-data" class="nav-link active" data-scroll-target="#credit-card-data">Credit card data</a></li>
   <li><a href="#normalizing-the-data" id="toc-normalizing-the-data" class="nav-link" data-scroll-target="#normalizing-the-data">Normalizing the data</a></li>
+  <li><a href="#model-architecture" id="toc-model-architecture" class="nav-link" data-scroll-target="#model-architecture">Model architecture</a></li>
   </ul>
 </nav>
     </div>
@@ -192,7 +193,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggridges)</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(purrr)</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(keras)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(caret)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tensorflow)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(caret)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(reticulate)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">#use_python_version("3.9:latest")</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">#install_tensorflow()</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"input/creditcard.csv"</span>, <span class="at">col_types =</span> <span class="fu">list</span>(<span class="at">Time =</span> <span class="fu">col_number</span>()))</span>
@@ -230,24 +235,135 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
-<section id="normalizing-the-data" class="level1">
-<h1>Normalizing the data</h1>
+<section id="normalizing-the-data" class="level2">
+<h2 class="anchored" data-anchor-id="normalizing-the-data">Normalizing the data</h2>
 <p>We are going to use autoencoders to detect the fraudulent cases. This means we will use the non-fraudulent training data to learn an encoding function for the data. When we apply this on the validation set, we expect to see that the fraudulent transactions are not well reconstructed.</p>
 <p>Since an autoencoder is a type of neural network, it is very important to normalize your data first. You can do this by rescaling the data to either a [0,1] or [-1,1] range or by standardizing them so that they are normally distributed with standard deviation 1. In R we can use the caret package which has a preprocessing functionality. With this functionality, we create a transformator with our training data that we can apply on the “future” data points or test set.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>minMaxScale <span class="ot">&lt;-</span> df_train <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span>Class) <span class="sc">%&gt;%</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">preProcess</span>(<span class="at">method =</span> <span class="st">"range"</span>) <span class="co">#use c("center", "scale") for standardization</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>x_train <span class="ot">&lt;-</span> <span class="fu">predict</span>(minMaxScale, df_train) <span class="sc">%&gt;%</span> </span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>Class) <span class="sc">%&gt;%</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.matrix</span>() <span class="co">#You need this format for tensorflow to accept it as input</span></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>x_test <span class="ot">&lt;-</span> <span class="fu">predict</span>(minMaxScale, df_test) <span class="sc">%&gt;%</span> </span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>Class) <span class="sc">%&gt;%</span></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.matrix</span>()</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>y_train <span class="ot">&lt;-</span> df_train<span class="sc">$</span>Class</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>y_test <span class="ot">&lt;-</span> df_test<span class="sc">$</span>Class</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>minMaxScale <span class="ot">&lt;-</span> df_train <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span>Class) <span class="sc">%&gt;%</span> <span class="fu">preProcess</span>(<span class="at">method =</span> <span class="st">"range"</span>) <span class="co">#use c("center", "scale") for standardization</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>x_train <span class="ot">&lt;-</span> <span class="fu">predict</span>(minMaxScale, df_train) <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span>Class) <span class="sc">%&gt;%</span> <span class="fu">as.matrix</span>() <span class="co">#You need this format for tensorflow to accept it as input </span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>x_test <span class="ot">&lt;-</span> <span class="fu">predict</span>(minMaxScale, df_test) <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span>Class) <span class="sc">%&gt;%</span> <span class="fu">as.matrix</span>()</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>y_train <span class="ot">&lt;-</span> df_train<span class="sc">$</span>Class </span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>y_test <span class="ot">&lt;-</span> df_test<span class="sc">$</span>Class</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+</section>
+<section id="model-architecture" class="level2">
+<h2 class="anchored" data-anchor-id="model-architecture">Model architecture</h2>
+<p>Next step is to design a neural network model architecture. In this example we will use keras to define our model architecture and tensorflow to do the actual calculations. Recall that an autoencoder has fewer nodes than input variables (28 input nodes). Here we will use three hidden layers. One of 12 neurons, one bottleneck layer of 6 and one layer of 12 again. For the activation function we will use the hyperbolic tangent function, which is a sigmoid function. Any non-linear function should work fine here and you can also use linear functions. You can play around with other activation functions like ReLU and sigmoid as well. If you were to use an identity function as activation, then the autoencoder would perform similar to a PCA analysis.</p>
+<p>Feel free to play around with the size of the layers and the amount of layers. Also, since we are training on only the ‘good’ transactions, you will want to learn as much as possible from these transaction. Consider also increasing the number of nodes in the symmetric hidden layers to a number higher than 28. This will make the model learn latent features in the data and puts less emphasis on compressing the data.</p>
+<p>Note: We did not use Time as a feature in the model. A great possible way to further improve your model could be by engineering a new feature out of this variable. As it is expressed in seconds, you could deduce something like the hour of day out of it. However, we are not sure whether the transactions are all done in the same time zone (it specifies only european credit card holders, not transactions done in Europe).</p>
+<p>After we’ve defined the model, we compile it and train it. The loss function is the mean squared error. This makes sense since we want to minimize the distance between our inputs and the reconstructed output. For the optimization, adam was used. Take a look in the package documentation for alternatives for adam. There is a lot of improvement still being done on these optimizers.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">keras_model_sequential</span>()</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>model <span class="sc">%&gt;%</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">layer_dense</span>(<span class="at">units =</span> <span class="dv">12</span>, <span class="at">activation =</span> <span class="st">"tanh"</span>, <span class="at">input_shape =</span> <span class="fu">ncol</span>(x_train)) <span class="sc">%&gt;%</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">layer_dense</span>(<span class="at">units =</span> <span class="dv">6</span>, <span class="at">activation =</span> <span class="st">"tanh"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">layer_dense</span>(<span class="at">units =</span> <span class="dv">12</span>, <span class="at">activation =</span> <span class="st">"tanh"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">layer_dense</span>(<span class="at">units =</span> <span class="fu">ncol</span>(x_train))</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(model)</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>model <span class="sc">%&gt;%</span> <span class="fu">compile</span>(</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">loss =</span> <span class="st">"mean_squared_error"</span>, </span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">optimizer =</span> <span class="st">"adam"</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>history <span class="ot">&lt;-</span> model <span class="sc">%&gt;%</span> <span class="fu">fit</span>(</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> x_train[y_train <span class="sc">==</span> <span class="dv">0</span>,], </span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">y =</span> x_train[y_train <span class="sc">==</span> <span class="dv">0</span>,], </span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">epochs =</span> <span class="dv">30</span>, </span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">batch_size =</span> <span class="dv">256</span>,</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>  <span class="at">validation_data =</span> <span class="fu">list</span>(x_test[y_test <span class="sc">==</span> <span class="dv">0</span>,], x_test[y_test <span class="sc">==</span> <span class="dv">0</span>,])</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>If we look at the reconstruction error (MSE) on the test set we see that there are some quite extreme outliers. Most errors lie between 0.01 and 0.025, but there are larger cases going up to 14. The density plot also shows the difference in reconstruction error between non-fraudulent transactions (in red) and fraud (in blue). We can see that there is a different distribution in terms of reconstruction error.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>pred_train <span class="ot">&lt;-</span> <span class="fu">predict</span>(model, x_train)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>7188/7188 - 15s - 15s/epoch - 2ms/step</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>mse_train <span class="ot">&lt;-</span> <span class="fu">apply</span>((x_train <span class="sc">-</span> pred_train)<span class="sc">^</span><span class="dv">2</span>, <span class="dv">1</span>, sum)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>pred_test <span class="ot">&lt;-</span> <span class="fu">predict</span>(model, x_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>1713/1713 - 3s - 3s/epoch - 2ms/step</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>mse_test <span class="ot">&lt;-</span> <span class="fu">apply</span>((x_test <span class="sc">-</span> pred_test)<span class="sc">^</span><span class="dv">2</span>, <span class="dv">1</span>, sum)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mse_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+ 0.002121  0.010381  0.014360  0.019757  0.021932 13.769592 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>plotdata <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">cbind</span>(x_test, y_test, mse_test))</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>fraud <span class="ot">=</span> <span class="fu">as.factor</span>(y_test)</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(plotdata, <span class="fu">aes</span>(<span class="at">x=</span> mse_test)) <span class="sc">+</span> </span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="fu">aes</span>(<span class="at">fill =</span> fraud)) <span class="sc">+</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">lims</span>(<span class="at">x =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>))</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>p</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 5 rows containing non-finite values (`stat_density()`).</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/Evaluation-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>The way we handle this outcome might depend on the resources that are available. One very coarse approach is to take the 200/500/… observations with the highest reconstruction error of our test set or perhaps the 0.1% with highest reconstruction error.</p>
+<p>A second approach is to find a good cutoff value based on precision, recall or other evaluation measures.</p>
+<p>A third approach is to find a cost-optimal cutoff value. This means we will have to express the cost of investigating a transaction, the cost of a fraud case that goes undetected and possibly also the cost of a false alarm.</p>
+<p>Let’s try the first approach.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>top_200 <span class="ot">&lt;-</span> plotdata <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(<span class="fu">desc</span>(mse_test)) <span class="sc">%&gt;%</span> <span class="fu">top_n</span>(<span class="dv">200</span>)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>incidence_rate <span class="ot">&lt;-</span> <span class="fu">sum</span>(top_200<span class="sc">$</span>y_test)<span class="sc">/</span><span class="dv">200</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We see that in the 200 highest there is an incidence rate of 19.5%. Compared to the dataset as a whole, which had an incidence rate of fraud of 0.17%, this is already quite an improvement.</p>
+<p>The second approach would be to create a tradeoff based on precision and recall values of the model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>possible_k <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">length.out =</span> <span class="dv">100</span>)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>precision <span class="ot">&lt;-</span> <span class="fu">sapply</span>(possible_k, <span class="cf">function</span>(k) {</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  predicted_class <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(mse_test <span class="sc">&gt;</span> k)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(predicted_class <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> y_test <span class="sc">==</span> <span class="dv">1</span>)<span class="sc">/</span><span class="fu">sum</span>(predicted_class)</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span><span class="fu">as.data.frame</span>(<span class="fu">cbind</span>(possible_k,precision)), <span class="fu">aes</span>(<span class="at">x =</span> possible_k, <span class="at">y =</span> precision)) <span class="sc">+</span> </span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>(<span class="at">color=</span><span class="st">"steelblue"</span>) <span class="sc">+</span> <span class="fu">xlab</span>(<span class="st">"k treshold"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>We want to detect as many fraud cases as possible, but try to avoid false alarm cases. If we merely look at the precision, we see that the optimal cutoff is somewhere around 0.29. Be aware however, that you also have to balance it out with respect to other evaluation measures like the recall value.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>recall <span class="ot">&lt;-</span> <span class="fu">sapply</span>(possible_k, <span class="cf">function</span>(k) {</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  predicted_class <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(mse_test <span class="sc">&gt;</span> k)</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(predicted_class <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> y_test <span class="sc">==</span> <span class="dv">1</span>)<span class="sc">/</span><span class="fu">sum</span>(y_test)</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span><span class="fu">as.data.frame</span>(<span class="fu">cbind</span>(possible_k,recall)), <span class="fu">aes</span>(<span class="at">x =</span> possible_k, <span class="at">y =</span> recall)) <span class="sc">+</span> </span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>(<span class="at">color=</span><span class="st">"steelblue"</span>) <span class="sc">+</span> <span class="fu">xlab</span>(<span class="st">"k treshold"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>In practice, there might be a cost involved in having wrong predictions. This can change the cutoff problem to a cost optimisation problem. Every inspection of a transaction could have a fixed cost, since an employee will have to spend time on it. Suppose this cost is 2.5 euro. The cost of not detecting a fraud case will also have a cost, namely the amount of money of the fraudulent transaction. The problem would then change to:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>avg_cost_per_check <span class="ot">&lt;-</span> <span class="fl">2.5</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>lost_money <span class="ot">&lt;-</span> <span class="fu">sapply</span>(possible_k, <span class="cf">function</span>(k) {</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  predicted_class <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(mse_test <span class="sc">&gt;</span> k)</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(avg_cost_per_check <span class="sc">*</span> predicted_class <span class="sc">+</span> (predicted_class <span class="sc">==</span> <span class="dv">0</span>) <span class="sc">*</span> y_test <span class="sc">*</span> df_test<span class="sc">$</span>Amount) </span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> <span class="fu">as.data.frame</span>(<span class="fu">cbind</span>(possible_k,lost_money)), <span class="fu">aes</span>(<span class="at">x =</span> possible_k, <span class="at">y =</span> lost_money)) <span class="sc">+</span></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>         <span class="fu">geom_line</span>(<span class="at">color=</span><span class="st">"steelblue"</span>) <span class="sc">+</span> <span class="fu">xlab</span>(<span class="st">"k treshold"</span>) <span class="sc">+</span> <span class="fu">ylab</span>(<span class="st">"Cost"</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Now the optimal cutoff would be 0.091. Feel free to play around with the parameters and see how this impacts the results. You could also make the cost function more complex: there might also be a cost for false alarms, where y_test == 0 and predicted_class == 1. Customers could leave when their card is blocked too often for no reason. What would be the cost of losing a customer?</p>
+<p>The initial exploration and some of the cost functions are inspired on the blog post of D Falbel, which includes an extra section on hyperparameter tuning: Falbel (2018, Jan.&nbsp;25). TensorFlow for R: Predicting Fraud with Autoencoders and Keras. Retrieved from https://blogs.rstudio.com/tensorflow/posts/2018-01-24-keras-fraud-autoencoder</p>
+<p>The workflow would look very similar in Python: the model is trained with the same Tensorflow/Keras code and the normalization can be done with Scikit-learn.</p>
 
 
 </section>
