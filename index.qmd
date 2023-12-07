@@ -14,8 +14,10 @@ A visual inspection of the data already shows that some of the features have a d
 
 As preparatory steps, take the (chronologically) first 230,000 data points as a training set and the rest for validation. This resembles the real-life scenario where you will want to predict for future transactions whether they are fraudulent based on the earlier transactions done.
 
-```{r, output=F}
+```{r imports, output=F}
 library(readr)
+library(reticulate)
+use_python_version("3.9:latest")
 library(tidyr)
 library(dplyr)
 library(ggplot2)
@@ -24,13 +26,15 @@ library(purrr)
 library(keras)
 library(tensorflow)
 library(caret)
-library(reticulate)
-#use_python_version("3.9:latest")
-#install_tensorflow()
+
+install_tensorflow()
+
 ```
 
 ```{r Load and Train-Test split}
-df <- read_csv("input/creditcard.csv", col_types = list(Time = col_number()))
+#df <- read_csv("input/creditcard.csv", col_types = list(Time = col_number()))
+
+df <- read_csv("https://media.githubusercontent.com/media/jeroenfr/TheSocraticSample/main/input/creditcard.csv", col_types = list(Time = col_number()))
 df_train <- df %>% filter(row_number(Time) <= 230000) %>% select(-Time)
 df_test <- df %>% filter(row_number(Time) > 230000) %>% select(-Time)
 print(head(df_train))
